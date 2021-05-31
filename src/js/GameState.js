@@ -2,9 +2,9 @@ export default class GameState {
   constructor() {
     this.chars = [];
     this.level = 1;
-    this.score = null;
-    this.record = null;
-    this.playerTurn = true;
+    this.score = 0;
+    this.record = 0;
+    this.playerTurn = null;
   }
 
   from(object) {
@@ -12,7 +12,5 @@ export default class GameState {
       character: object.character,
       position: object.position,
     });
-    // TODO: create object
-    // return null;
   }
 }

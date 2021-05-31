@@ -1,5 +1,4 @@
 export function calcTileType(index, boardSize) {
-  // TODO: write logic here
   const i = index + 1;
   switch (true) {
     case (i === 1): return 'top-left';
@@ -18,10 +17,24 @@ export function calcHealthLevel(health) {
   if (health < 15) {
     return 'critical';
   }
-
   if (health < 50) {
     return 'normal';
   }
-
   return 'high';
 }
+
+// export function getPlayerType() {
+//   return [Swordsman, Bowman, Magician];
+// }
+
+// export function getPlayerTypeName() {
+//   return ['swordsman', 'bowman', 'magician'];
+// }
+
+// export function getEnemyType() {
+//   return [Daemon, Undead, Vampire];
+// }
+
+// export function getEnemyTypeName() {
+//   return ['daemon', 'undead', 'vampire'];
+// }

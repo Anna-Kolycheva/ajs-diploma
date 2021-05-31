@@ -1,4 +1,4 @@
-[![Build status](https://ci.appveyor.com/api/projects/status/jk9lqxjs4946794s?svg=true)](https://ci.appveyor.com/project/Anna-Kolycheva/ajs-diploma)
+[![Build status](https://ci.appveyor.com/api/projects/status/4ebdc1mgs9qqh28y?svg=true)](https://ci.appveyor.com/project/Anna-Kolycheva/ajs-diploma)
 
 # AJS. Retro Game
 

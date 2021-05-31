@@ -1,6 +1,7 @@
-dist
+
 doc
 .idea
+dist
 
 # Logs
 logs

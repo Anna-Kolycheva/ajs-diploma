@@ -2,7 +2,10 @@ import Character from '../Character';
 import Bowman from '../caracters/bowman';
 
 test('ошибка при создании new Character', () => {
-  expect(() => { new Character(1, 'Magician'); }).toThrowError('объект базового класса не может быть создан');
+  expect(() => {
+    // eslint-disable-next-line no-new
+    new Character(1, 'Magician');
+  }).toThrowError('объект базового класса не может быть создан');
 });
 
 test('создание персонажа', () => {
