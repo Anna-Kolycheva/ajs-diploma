@@ -3,6 +3,7 @@ doc
 .idea
 dist
 
+
 # Logs
 logs
 *.log

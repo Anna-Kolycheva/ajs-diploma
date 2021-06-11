@@ -66,7 +66,6 @@ export default class GameController {
     this.gamePlay.addSaveGameListener(this.onSaveGameClick.bind(this));
     this.gamePlay.addLoadGameListener(this.onLoadGameClick.bind(this));
     this.gameState.playerTurn = true;
-    this.onLoadGameClick();
     this.gamePlay.drawUi(thems[this.level]);
     this.gamePlay.redrawPositions(this.gameState.chars);
   }
@@ -78,28 +77,30 @@ export default class GameController {
   onLoadGameClick() {
     const state = this.stateService.load();
     this.gameState.playerTurn = true;
-    this.gameState.record = state.record;
-    if (!state.chars) return;
-
-    this.gameState.chars = [];
-    this.level = state.level;
-    this.gameState.score = state.score;
-
-    if (state.chars) {
-      state.chars.forEach((elem) => {
-        const {
-          type, level, health, attack, defence,
-        } = elem.character;
-        const { position } = elem;
-        const typeName = [...getPlayerTypeName(), ...getEnemyTypeName()];
-        const ind = typeName.findIndex((element) => element === type);
-        const Charclass = [...getPlayerType(), ...getEnemyType()];
-        const char = { character: new Charclass[ind](level), position };
-        char.character.health = health;
-        char.character.attack = attack;
-        char.character.defence = defence;
-        this.gameState.from(char);
-      });
+    if (state) {
+      this.gameState.record = state.record;
+      if (!state.chars) return;
+      this.gameState.chars = [];
+      this.level = state.level;
+      this.gameState.score = state.score;
+      if (state.chars) {
+        state.chars.forEach((elem) => {
+          const {
+            type, level, health, attack, defence,
+          } = elem.character;
+          const { position } = elem;
+          const typeName = [...getPlayerTypeName(), ...getEnemyTypeName()];
+          const ind = typeName.findIndex((element) => element === type);
+          const Charclass = [...getPlayerType(), ...getEnemyType()];
+          const char = { character: new Charclass[ind](level), position };
+          char.character.health = health;
+          char.character.attack = attack;
+          char.character.defence = defence;
+          this.gameState.from(char);
+        });
+      }
+      this.gamePlay.drawUi(thems[this.level]);
+      this.gamePlay.redrawPositions(this.gameState.chars);
     }
   }
 
@@ -121,10 +122,10 @@ export default class GameController {
       const obj = new PositionedCharacter(char, generator.next().value);
       this.gameState.from(obj);
     });
+    this.gamePlay.drawUi(thems[this.level]);
     this.gamePlay.redrawPositions(this.gameState.chars);
     this.gameState.playerTurn = true;
     this.gameState.level = 1;
-    this.stateService.save(this.gameState);
   }
 
   async onCellClick(index) {
@@ -176,7 +177,6 @@ export default class GameController {
             }
             this.currentIndex = null;
             this.enemyTurn();
-            this.stateService.save(this.gameState);
           } else GamePlay.showError('Слишком далеко для атаки!');
         } else if (this.canIDo(index, 'go')) {
           const charInd = this.gameState.chars
@@ -196,7 +196,6 @@ export default class GameController {
           this.currentIndex = index;
         }
       }
-      this.onSaveGameClick();
     }
   }
 

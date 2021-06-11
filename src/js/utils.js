@@ -22,19 +22,3 @@ export function calcHealthLevel(health) {
   }
   return 'high';
 }
-
-// export function getPlayerType() {
-//   return [Swordsman, Bowman, Magician];
-// }
-
-// export function getPlayerTypeName() {
-//   return ['swordsman', 'bowman', 'magician'];
-// }
-
-// export function getEnemyType() {
-//   return [Daemon, Undead, Vampire];
-// }
-
-// export function getEnemyTypeName() {
-//   return ['daemon', 'undead', 'vampire'];
-// }
