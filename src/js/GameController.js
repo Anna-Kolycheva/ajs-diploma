@@ -52,7 +52,8 @@ export default class GameController {
     if ((action === 'attack') && distx <= attackRange && disty <= attackRange) {
       return true;
     }
-    if (action === 'go' && distx <= distance && disty <= distance && (distx === disty || distx === 0 || disty === 0)) {
+    const distanceСtrl = distx === disty || distx === 0 || disty === 0;
+    if (action === 'go' && distx <= distance && disty <= distance && distanceСtrl) {
       return true;
     }
     return false;
@@ -77,31 +78,34 @@ export default class GameController {
   onLoadGameClick() {
     const state = this.stateService.load();
     this.gameState.playerTurn = true;
-    if (state) {
-      this.gameState.record = state.record;
-      if (!state.chars) return;
-      this.gameState.chars = [];
-      this.level = state.level;
-      this.gameState.score = state.score;
-      if (state.chars) {
-        state.chars.forEach((elem) => {
-          const {
-            type, level, health, attack, defence,
-          } = elem.character;
-          const { position } = elem;
-          const typeName = [...getPlayerTypeName(), ...getEnemyTypeName()];
-          const ind = typeName.findIndex((element) => element === type);
-          const Charclass = [...getPlayerType(), ...getEnemyType()];
-          const char = { character: new Charclass[ind](level), position };
-          char.character.health = health;
-          char.character.attack = attack;
-          char.character.defence = defence;
-          this.gameState.from(char);
-        });
-      }
-      this.gamePlay.drawUi(thems[this.level]);
-      this.gamePlay.redrawPositions(this.gameState.chars);
+    if (!state) {
+      return;
     }
+    this.gameState.record = state.record;
+    if (!state.chars) {
+      return;
+    }
+    this.gameState.chars = [];
+    this.gameState.level = state.level;
+    this.level = this.gameState.level;
+    this.gameState.score = state.score;
+    state.chars.forEach((elem) => {
+      const {
+        type, level, health, attack, defence,
+      } = elem.character;
+      const { position } = elem;
+      const typeName = [...getPlayerTypeName(), ...getEnemyTypeName()];
+      const ind = typeName.findIndex((element) => element === type);
+      const Charclass = [...getPlayerType(), ...getEnemyType()];
+      const newCharacter = new Charclass[ind](level);
+      const char = { character: newCharacter, position };
+      char.character.health = health;
+      char.character.attack = attack;
+      char.character.defence = defence;
+      this.gameState.from(char);
+    });
+    this.gamePlay.drawUi(thems[this.level]);
+    this.gamePlay.redrawPositions(this.gameState.chars);
   }
 
   onNewGameClick() {
@@ -113,13 +117,15 @@ export default class GameController {
     this.playerTeam = generateTeam(getPlayerType(), this.level, 2);
     this.playerTeam.forEach((char) => {
       const generator = generatePosition('player', this.gameState);
-      const obj = new PositionedCharacter(char, generator.next().value);
+      const generatorValue = generator.next().value;
+      const obj = new PositionedCharacter(char, generatorValue);
       this.gameState.from(obj);
     });
     this.enemyTeam = generateTeam(getEnemyType(), this.level, 2);
     this.enemyTeam.forEach((char) => {
       const generator = generatePosition('enemy', this.gameState);
-      const obj = new PositionedCharacter(char, generator.next().value);
+      const generatorValue = generator.next().value;
+      const obj = new PositionedCharacter(char, generatorValue);
       this.gameState.from(obj);
     });
     this.gamePlay.drawUi(thems[this.level]);
@@ -128,107 +134,127 @@ export default class GameController {
     this.gameState.level = 1;
   }
 
-  async onCellClick(index) {
-    if (this.gameState.playerTurn === true) {
-      if (this.currentIndex || this.currentIndex === 0) {
-        if (this.gameState.chars.findIndex((elem) => elem.position === index) !== -1) {
-          const charInd = this.gameState.chars.findIndex((elem) => elem.position === index);
-          const char = this.gameState.chars[charInd].character;
-          if (getPlayerTypeName().includes(char.type)) {
-            if (this.gamePlay) {
-              this.gamePlay.deselectCell(this.currentIndex);
-              this.gamePlay.selectCell(index);
-            }
-            this.currentIndex = index;
-          } else if (this.canIDo(index, 'attack')) {
-            const currenCharInd = this.gameState.chars
-              .findIndex((elem) => elem.position === this.currentIndex);
-            const currentChar = this.gameState.chars[currenCharInd].character;
-            const domage = Math.max(currentChar.attack - char.defence,
-              currentChar.attack * 0.1).toFixed();
-            char.health -= domage;
-            await this.gamePlay.showDamage(index, domage);
-            this.gamePlay.redrawPositions(this.gameState.chars);
+  async attack(char, index, charInd) {
+    const character = char;
+    const currenCharInd = this.gameState.chars
+      .findIndex((elem) => elem.position === this.currentIndex);
+    const currentChar = this.gameState.chars[currenCharInd].character;
+    const damage = Math.max(currentChar.attack - char.defence,
+      currentChar.attack * 0.1).toFixed();
+    character.health -= damage;
+    await this.gamePlay.showDamage(index, damage);
+    this.gamePlay.redrawPositions(this.gameState.chars);
+    this.gamePlay.deselectCell(index);
 
-            if (char.health <= 0) {
-              this.gameState.chars.splice(charInd, 1);
-              this.gamePlay.deselectCell(index);
-              this.gamePlay.redrawPositions(this.gameState.chars);
-            }
+    if (character.health <= 0) {
+      this.gameState.chars.splice(charInd, 1);
+      this.gamePlay.redrawPositions(this.gameState.chars);
+    }
 
-            if (this.gameState.chars.findIndex(
-              (elem) => getEnemyTypeName().includes(elem.character.type),
-            ) === -1) {
-              if (this.level === 4) {
-                this.gameState.chars.forEach(function (elem) {
-                  (this.gameState.score += elem.character.health);
-                });
-                this.saveRecord();
-                this.stop = true;
-                GamePlay.showMessage(`Ты выиграл! Сыграем еще? Твой счет:${this.gameState.score} Твой рекорд:${this.gameState.record}`);
-                this.onNewGameClick();
-              } else {
-                this.levelUpGame();
-                GamePlay.showMessage(`Еще раунд? Твой счет:${this.gameState.score} Твой рекорд:${this.gameState.record}`);
-              }
-            }
-            if (this.currentIndex) {
-              this.gamePlay.deselectCell(this.currentIndex);
-            }
-            this.currentIndex = null;
-            this.enemyTurn();
-          } else GamePlay.showError('Слишком далеко для атаки!');
-        } else if (this.canIDo(index, 'go')) {
-          const charInd = this.gameState.chars
-            .findIndex((elem) => elem.position === this.currentIndex);
-          this.gameState.chars[charInd].position = index;
-          this.gamePlay.deselectCell(index);
-          this.gamePlay.deselectCell(this.currentIndex);
-          this.currentIndex = null;
-          this.gamePlay.redrawPositions(this.gameState.chars);
-          this.enemyTurn();
-        }
-      } else if (this.gameState.chars.findIndex((elem) => elem.position === index) !== -1) {
-        const charInd = this.gameState.chars.findIndex((elem) => elem.position === index);
+    if (this.gameState.chars.findIndex(
+      (elem) => getEnemyTypeName().includes(elem.character.type),
+    ) === -1) {
+      if (this.level === 4) {
+        this.gameState.chars.forEach((elem) => {
+          (this.gameState.score += elem.character.health);
+        });
+        this.saveRecord();
+        this.stop = true;
+        GamePlay.showMessage(`Ты выиграл! Сыграем еще? Твой счет:${this.gameState.score} Твой рекорд:${this.gameState.record}`);
+        this.onNewGameClick();
+        return;
+      }
+      this.levelUpGame();
+      GamePlay.showMessage(`Еще раунд? Твой счет:${this.gameState.score} Твой рекорд:${this.gameState.record}`);
+    }
+    if (this.currentIndex) {
+      this.gamePlay.deselectCell(this.currentIndex);
+    }
+    this.currentIndex = null;
+    this.enemyTurn();
+  }
+
+  go(index) {
+    const CurrentCharInd = this.gameState.chars
+      .findIndex((elem) => elem.position === this.currentIndex);
+    this.gameState.chars[CurrentCharInd].position = index;
+    this.gamePlay.deselectCell(index);
+    this.gamePlay.deselectCell(this.currentIndex);
+    this.currentIndex = null;
+    this.gamePlay.redrawPositions(this.gameState.chars);
+    this.enemyTurn();
+  }
+
+  onCellClick(index) {
+    if (this.gameState.playerTurn !== true) {
+      return;
+    }
+    const charInd = this.gameState.chars.findIndex((elem) => elem.position === index);
+    if (this.currentIndex || this.currentIndex === 0) {
+      if (charInd !== -1) {
         const char = this.gameState.chars[charInd].character;
         if (getPlayerTypeName().includes(char.type)) {
-          this.gamePlay.selectCell(index);
+          if (this.gamePlay) {
+            this.gamePlay.deselectCell(this.currentIndex);
+            this.gamePlay.selectCell(index);
+          }
           this.currentIndex = index;
+          return;
         }
+        if (this.canIDo(index, 'attack')) {
+          this.attack(char, index, charInd);
+          return;
+        }
+        GamePlay.showError('Слишком далеко для атаки!');
+        return;
+      }
+      if (this.canIDo(index, 'go')) {
+        this.go(index);
+      }
+      return;
+    }
+    if (charInd !== -1) {
+      const char = this.gameState.chars[charInd].character;
+      if (getPlayerTypeName().includes(char.type)) {
+        this.gamePlay.selectCell(index);
+        this.currentIndex = index;
       }
     }
   }
 
   onCellEnter(index) {
-    if (this.gameState.chars.findIndex((elem) => elem.position === index) !== -1) {
-      const charInd = this.gameState.chars.findIndex((elem) => elem.position === index);
+    const charInd = this.gameState.chars.findIndex((elem) => elem.position === index);
+    if (charInd !== -1) {
       const char = this.gameState.chars[charInd].character;
       this.gamePlay.showCellTooltip(`🎖 ${char.level} ⚔ ${char.attack} 🛡 ${char.defence} ❤ ${char.health}`, index);
-
       if (this.gameState.playerTurn === true
         && getPlayerTypeName().includes(char.type)
       ) {
         this.gamePlay.setCursor('pointer');
-      } else if (this.currentIndex || this.currentIndex === 0) {
+        return;
+      }
+      if (this.currentIndex || this.currentIndex === 0) {
         if (this.canIDo(index, 'attack')) {
           this.gamePlay.setCursor('crosshair');
           this.gamePlay.selectCell(index, 'red');
-        } else {
-          this.gamePlay.setCursor('not-allowed');
+          return;
         }
-      } else {
         this.gamePlay.setCursor('not-allowed');
+        return;
       }
-    } else if (this.currentIndex || this.currentIndex === 0) {
+      this.gamePlay.setCursor('not-allowed');
+      return;
+    }
+    if (this.currentIndex || this.currentIndex === 0) {
       if (this.canIDo(index, 'go')) {
         this.gamePlay.setCursor('pointer');
         this.gamePlay.selectCell(index, 'green');
-      } else {
-        this.gamePlay.setCursor('auto');
+        return;
       }
-    } else {
       this.gamePlay.setCursor('auto');
+      return;
     }
+    this.gamePlay.setCursor('auto');
   }
 
   onCellLeave(index) {
@@ -251,38 +277,42 @@ export default class GameController {
     this.gamePlay.loadGameListeners = [];
   }
 
+  addTeam(team, char) {
+    const generator = generatePosition(team, this.gameState);
+    const generatorValue = generator.next().value;
+    const obj = new PositionedCharacter(char, generatorValue);
+    this.gameState.from(obj);
+  }
+
   levelUpGame() {
     this.stop = true;
     // eslint-disable-next-line no-return-assign
     this.gameState.chars.forEach((elem) => this.gameState.score += elem.character.health);
     this.saveRecord();
-
     this.gameState.chars.forEach((char) => {
       char.character.levelUp();
       // eslint-disable-next-line no-param-reassign
-      char.position = generatePosition('player', this.gameState).next().value;
+      const getPosition = generatePosition('player', this.gameState);
+      // eslint-disable-next-line no-param-reassign
+      char.position = getPosition.next().value;
     });
-
-    const playerTeam = generateTeam(getPlayerType(), this.level, Math.min(this.level, 2));
+    const numberOfCharsPl = Math.min(this.level, 2);
+    const playerTeam = generateTeam(getPlayerType(), this.level, numberOfCharsPl);
     playerTeam.forEach((char) => {
-      const generator = generatePosition('player', this.gameState);
-      const obj = new PositionedCharacter(char, generator.next().value);
-      this.gameState.from(obj);
+      this.addTeam('player', char);
     });
     this.level += 1;
-
-    const enemyTeam = generateTeam(getEnemyType(), this.level, this.gameState.chars.length);
+    const numberOfCharsEn = this.gameState.chars.length;
+    const enemyTeam = generateTeam(getEnemyType(), this.level, numberOfCharsEn);
     enemyTeam.forEach((char) => {
-      const generator = generatePosition('enemy', this.gameState);
-      const obj = new PositionedCharacter(char, generator.next().value);
-      this.gameState.from(obj);
+      this.addTeam('enemy', char);
     });
     this.gamePlay.drawUi(thems[this.level]);
     this.gamePlay.redrawPositions(this.gameState.chars);
     this.gameState.level = this.level;
   }
 
-  enemyTurn() {
+  async enemyTurn() {
     if (this.stop === true) {
       this.stop = false;
       return;
@@ -302,27 +332,29 @@ export default class GameController {
       for (let j = 0; j < teamPlayer.length; j += 1) {
         const plIndex = teamPlayer[j].position;
         this.currentIndex = teamEnemy[i].position;
-        if (this.canIDo(plIndex, 'attack')) {
-          const domagePre = teamEnemy[i].character.attack - teamPlayer[j].character.defence;
-          const domage = Math.max(domagePre, teamEnemy[i].character.attack * 0.1).toFixed();
-          teamPlayer[j].character.health -= domage;
-          (async () => this.gamePlay.showDamage(plIndex, domage))();
-          if (teamPlayer[j].character.health < 0) {
-            const charInd = this.gameState.chars.findIndex((elem) => elem.position === plIndex);
-            this.gameState.chars.splice(charInd, 1);
-            this.gamePlay.redrawPositions(this.gameState.chars);
-            this.currentIndex = null;
-            if (this.gameState.chars.findIndex((elem) => getPlayerTypeName()
-              .includes(elem.character.type)) === -1) {
-              GamePlay.showMessage('Ты проиграл');
-              this.onNewGameClick();
-            }
-          }
-          doTurn = true;
+        if (!this.canIDo(plIndex, 'attack')) {
+          // eslint-disable-next-line no-continue
+          continue;
         }
-        if (doTurn === true) {
+        const damagePreliminary = teamEnemy[i].character.attack - teamPlayer[j].character.defence;
+        const damage = Math.max(damagePreliminary, teamEnemy[i].character.attack * 0.1).toFixed();
+        teamPlayer[j].character.health -= damage;
+        // eslint-disable-next-line no-await-in-loop
+        await this.gamePlay.showDamage(plIndex, damage);
+        doTurn = true;
+        if (teamPlayer[j].character.health >= 0) {
           break;
         }
+        const charInd = this.gameState.chars.findIndex((elem) => elem.position === plIndex);
+        this.gameState.chars.splice(charInd, 1);
+        this.gamePlay.redrawPositions(this.gameState.chars);
+        this.currentIndex = null;
+        if (this.gameState.chars.findIndex((elem) => getPlayerTypeName()
+          .includes(elem.character.type)) === -1) {
+          GamePlay.showMessage('Ты проиграл');
+          this.onNewGameClick();
+        }
+        break;
       }
       if (doTurn === true) {
         break;
@@ -340,8 +372,12 @@ export default class GameController {
           const min = Math.ceil(-teamEnemy[i].character.movement);
           const max = Math.floor(teamEnemy[i].character.movement);
           coordinates.y += Math.floor(Math.random() * (max - min + 1)) + min;
-          if (coordinates.y > 7) coordinates.y = 7;
-          if (coordinates.y < 0) coordinates.y = 0;
+          if (coordinates.y > 7) {
+            coordinates.y = 7;
+          }
+          if (coordinates.y < 0) {
+            coordinates.y = 0;
+          }
           newPos = (coordinates.y) * 8 + (coordinates.x);
           doTurn = true;
         // eslint-disable-next-line no-loop-func
@@ -360,7 +396,7 @@ export default class GameController {
 
   saveRecord() {
     const state = this.stateService.load();
-    if (this.gameState.score > this.gameState.record) {
+    if (this.gameState.score > state.record) {
       this.gameState.record = this.gameState.score;
       state.record = this.gameState.score;
       this.stateService.save(state);
