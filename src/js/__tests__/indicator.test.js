@@ -30,12 +30,6 @@ test('игрок не может aтаковать', () => {
     .toBe(false);
 });
 
-test('выбрать другого персонажа', () => {
-  gameController.onCellClick(15);
-  expect(gameController.currentIndex)
-    .toBe(15);
-});
-
 test('попытка выбора персонажа из чужой команды', () => {
   gameController.currentIndex = null;
   gameController.onCellClick(1);
